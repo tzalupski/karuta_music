@@ -39,3 +39,6 @@ virt/
 .idea/usage.statistics.xml
 .idea/tasks.xml
 .idea/shelf/
+
+# Other
+tmp_data/
