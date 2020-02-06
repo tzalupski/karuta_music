@@ -1,7 +1,8 @@
 import requests
 from Reader import reader
 import random
-
+import json
+import uuid
 
 class Arist:
     def __init__(self, name='', id='', albums=[],tracks=[]):
@@ -20,16 +21,17 @@ def get_dict_item(dict, key):
     return dict.setdefault(key, {})
 
 #TODO Work in progress
+# token will expire frequently so it need to be changed
+token = 'BQBHzEvyZC_Cuc72evy8hRYk-dikH9JnFqybR1KVCozpWwUUxmQW8ZnIOiqTTw44Vaq9LhJis-s1jjg3s3W0v53FM4ZV4UfwfkdSM9ionDEIuKnEzKEOc1D577kp6ldXIZbqvxN9mLUQexuTiBpdD26um7MMMxKBol66AOg'
 
-def download_needed_data():
-    token = 'BQBHzEvyZC_Cuc72evy8hRYk-dikH9JnFqybR1KVCozpWwUUxmQW8ZnIOiqTTw44Vaq9LhJis-s1jjg3s3W0v53FM4ZV4UfwfkdSM9ionDEIuKnEzKEOc1D577kp6ldXIZbqvxN9mLUQexuTiBpdD26um7MMMxKBol66AOg'
+def download_needed_data(token):
     search_url = 'https://api.spotify.com/v1/search'
     artists_names_list = reader.get_list_from_file('tmp_data/artists.txt')
     artist_list = []
     for artist in artists_names_list:
         artist_name = artist.replace(' ','%20')
         artist_query = '{}?q={}&type=artist&limit=1'.format(search_url,artist_name)
-        response =requests.get(artist_query, headers={"Content-Type":"application/json",
+        response = requests.get(artist_query, headers={"Content-Type":"application/json",
                                "Authorization": "Bearer {}".format(token)})
         artist_resp  = get_dict_item(get_dict_item(response.json(),'artists'),'items')[0]
         albums_query = 'https://api.spotify.com/v1/artists/{}/albums?include_groups=album,single,compilation'.format(get_dict_item(artist_resp,'id'))
@@ -46,3 +48,14 @@ def download_needed_data():
 
 def select_songs_at_random(list_of_artists):
     return [random.choice(artist.tracks)['id'] for artist in list_of_artists]
+
+def create_empty_playlist(token, user_id, playlist_name):
+    random_name = uuid.uuid4()
+    query = 'https://api.spotify.com/v1/users/{}/playlists'.format(user_id)
+    request_body = json.dumps({
+          "name": random_name,
+          "description": "Karuta_generated_playlist",
+          "public": False
+        })
+    requests.post(url = query, data = request_body, headers={"Content-Type":"application/json",
+                               "Authorization": "Bearer {}".format(token)})
