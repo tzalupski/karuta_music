@@ -20,9 +20,6 @@ class Albums:
 def get_dict_item(dict, key):
     return dict.setdefault(key, {})
 
-#TODO Work in progress
-# token will expire frequently so it need to be changed
-token = 'BQBHzEvyZC_Cuc72evy8hRYk-dikH9JnFqybR1KVCozpWwUUxmQW8ZnIOiqTTw44Vaq9LhJis-s1jjg3s3W0v53FM4ZV4UfwfkdSM9ionDEIuKnEzKEOc1D577kp6ldXIZbqvxN9mLUQexuTiBpdD26um7MMMxKBol66AOg'
 
 def download_needed_data(token):
     search_url = 'https://api.spotify.com/v1/search'
@@ -40,22 +37,52 @@ def download_needed_data(token):
         for item in get_dict_item(albums_response.json(),'items'):
             tracks_query = 'https://api.spotify.com/v1/albums/{}/tracks?limit=50'.format(item['id'])
             tracks_response = requests.get(tracks_query, headers={"Authorization": "Bearer {}".format(token)})
-            album_tracks = [{t['name']: t['id']} for t in tracks_response.json()['items']]
+            album_tracks = [(t['uri'], t['name']) for t in tracks_response.json()['items']]
             album = Albums(item['name'], item['id'], get_dict_item(artist_resp,'name'), album_tracks)
             tmp_albums_list.append(album)
         artist_obj =  Arist(get_dict_item(artist_resp,'name'), get_dict_item(artist_resp,'id'), tmp_albums_list, [track for alb in tmp_albums_list for track in alb.tracks])
         artist_list.append(artist_obj)
+    return artist_list
+
 
 def select_songs_at_random(list_of_artists):
-    return [random.choice(artist.tracks)['id'] for artist in list_of_artists]
+    return [random.choice(artist.tracks)[0] for artist in list_of_artists]
+
 
 def create_empty_playlist(token, user_id, playlist_name):
-    random_name = uuid.uuid4()
     query = 'https://api.spotify.com/v1/users/{}/playlists'.format(user_id)
     request_body = json.dumps({
-          "name": random_name,
+          "name": playlist_name,
           "description": "Karuta_generated_playlist",
           "public": False
         })
-    requests.post(url = query, data = request_body, headers={"Content-Type":"application/json",
-                               "Authorization": "Bearer {}".format(token)})
+    playlist_response = requests.post(url = query, data = request_body,
+                                      headers={"Content-Type":"application/json",
+                                      "Authorization": "Bearer {}".format(token)}
+                                      )
+    return  playlist_response.json()
+
+
+def add_tracks_to_playlist(token, playlist_id, tracks_list):
+    query = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+    tracks_query = "?uris={}".format(','.join(tracks_list))
+    query = query + tracks_query
+    playlist_response = requests.post(url = query,
+                                      headers={"Content-Type":"application/json",
+                                      "Authorization": "Bearer {}".format(token)}
+                                      )
+    return playlist_response
+
+
+#TODO It works!
+# token will expire frequently so it need to be changed
+token = ""
+user_id = "" # TODO insert your spotify username here
+random_name = uuid.uuid4().hex
+print('Your new playlist is named:', random_name)
+artist_list = download_needed_data(token)
+list_of_songs = select_songs_at_random(artist_list)
+playlist_json = create_empty_playlist(token, user_id,random_name)
+final_response = add_tracks_to_playlist(token, playlist_json['id'], list_of_songs)
+
+
