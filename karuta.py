@@ -25,7 +25,7 @@ def rand_track(obj):
 
 
 def get_list_of_random_tracks_uri(list_of_artists):
-    return [random_track(artist)['uri'] for artist in list_of_artists]
+    return [rand_track(artist)['uri'] for artist in list_of_artists]
 
 
 def get_dict_item(dict, key):
@@ -59,10 +59,13 @@ def download_needed_data(token):
 
 def get_arist_data(token, api_url, artist_name):
     artist_name = artist_name.replace(' ','%20')
-    query = api_url.join('?q=',artist_name,'&type=artist','&limit=1')
+    query = '{}search/?q={}&type=artist&limit=1'.format(api_url,artist_name)
     response = requests.get(query, headers={"Content-Type":"application/json",
                            "Authorization": "Bearer {}".format(token)})
-    artist_json  = get_dict_item(get_dict_item(response.json(),'artists'),'items')[0]
+    try:
+        artist_json  = get_dict_item(get_dict_item(response.json(),'artists'),'items')[0]
+    except IndexError:
+        import pdb;pdb.set_trace()
     return artist_json
 
 
@@ -73,7 +76,7 @@ def get_album_data(token, api_url, artist_json):
 
 
 def get_albums_tracks(token, api_url, album_json):
-    tracks_query = 'api_url/albums/{}/tracks?limit=50'.format(album_json['id'])
+    tracks_query = '{}/albums/{}/tracks?limit=50'.format(api_url, album_json['id'])
     tracks_response = requests.get(tracks_query, headers={"Authorization": "Bearer {}".format(token)})
     return tracks_response.json()
 
@@ -105,15 +108,26 @@ def add_tracks_to_playlist(token, playlist_id, tracks_list):
 
 
 
-#TODO It works! Refactor in progress
-# token will expire frequently so it need to be changed
-token = ""
-user_id = "" # TODO insert your spotify username here
+#TODO It (not)works! Refactor in progress
+token = ""                                                       # token will expire frequently so it need to be changed
+user_id = ""                                                     # insert your spotify username here
 api_url = 'https://api.spotify.com/v1/'
 artists_names_list = reader.get_list_from_file('tmp_data/artists.txt')
 random_name = uuid.uuid4().hex
 print('Your new playlist is named:', random_name)
-artist_list = download_needed_data(token)
+#artist_list = download_needed_data(token)
+artist_list = []
+for artist in artists_names_list:
+    artist_json = get_arist_data(token,api_url,artist)
+    albums_json = get_album_data(token,api_url,artist_json)
+    albums_list = []
+    for album in get_dict_item(albums_json,'items'):
+        tracks__json = get_albums_tracks(token,artist_list,album)
+        album_tracks = [{'uri': t['uri'], 'name': t['name']} for t in tracks__json['items']]
+        album = Albums(album['name'], album['id'], get_dict_item(artist_json,'name'), album_tracks)
+        albums_list.append(album)
+    artist_obj =  Arist(get_dict_item(artist_json,'name'), get_dict_item(artist_json,'id'), albums_list, [track for alb in albums_list for track in alb.tracks])
+    artist_list.append(artist_obj)
 list_of_songs = get_list_of_random_tracks_uri(artist_list)
 playlist_json = create_empty_playlist(token, user_id,random_name)
 final_response = add_tracks_to_playlist(token, playlist_json['id'], list_of_songs)
