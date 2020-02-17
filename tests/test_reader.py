@@ -4,7 +4,7 @@ from Helpers import reader
 import os
 
 
-class TestFileReader(unittest.TestCase):
+class TestReader(unittest.TestCase):
     def setUp(self):
         self.path = os.path.join('input_files', 'test_input.txt')
 
